@@ -20,6 +20,5 @@ from django.urls import path, include
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
-    path('posts/', include('posts.urls')),  # Ensure 'posts' is the name of your app
-    path('', include('posts.urls')),  # Add this line to include the default view
+    path('posts/', include('posts.urls')),  # **Keep this line - URLs will be like /posts/users/, /posts/posts/, etc.**
 ]
