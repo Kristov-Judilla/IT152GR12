@@ -1,8 +1,11 @@
 from django.urls import path
 from . import views
-from .views import UserListCreate, PostListCreate, CommentListCreate
+from .views import UserListCreate, PostListCreate, CommentListCreate, LikePostView, CommentPostView, CommentListView, PostDetailView
 
 urlpatterns = [
+    # **ADD THIS LINE - Basic Hello World View at root path:**
+    path('', views.hello_world_view, name='hello-world'),
+    
     # Function-based view URLs
     path('users/', views.get_users, name='get_users'),
     path('users/create/', views.create_user, name='create_user'),
@@ -15,4 +18,11 @@ urlpatterns = [
     path('api/users/', UserListCreate.as_view(), name='user-list-create'),
     path('api/posts/', PostListCreate.as_view(), name='post-list-create'),
     path('api/comments/', CommentListCreate.as_view(), name='comment-list-create'),
+    path('api/login/', views.UserLoginView.as_view(), name='api-login'),
+    path('api/posts/<int:pk>/', PostDetailView.as_view(), name='post-detail'),  # Change post_id to pk
+
+    # New endpoints for likes and comments (added from Homework 5)
+    path('<int:post_id>/like/', LikePostView.as_view(), name='post-like'),
+    path('<int:post_id>/comment/', CommentPostView.as_view(), name='post-comment'),
+    path('<int:post_id>/comments/', CommentListView.as_view(), name='post-comments'),
 ]
