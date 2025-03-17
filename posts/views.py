@@ -8,29 +8,39 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from django.contrib.auth.models import User
-from .models import Post, Comment, Like
+from .models import Post, Comment, Like, Follow
 from .serializers import UserSerializer, PostSerializer, CommentSerializer, LikeSerializer
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsPostAuthor
-from django.contrib.auth import authenticate
+from django.contrib.auth import authenticate, get_user_model, login
 from rest_framework.authtoken.models import Token
 from singletons.logger_singleton import LoggerSingleton
 from factories.post_factory import PostFactory
 from rest_framework.renderers import JSONRenderer
-from rest_framework.permissions import AllowAny
 from django.http import Http404
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from allauth.socialaccount.models import SocialAccount
+from allauth.socialaccount.providers.google.provider import GoogleProvider
+from rest_framework.pagination import PageNumberPagination
+
+# Get custom User model
+User = get_user_model()
+logger = LoggerSingleton().get_logger()
 
 # Basic Hello World View
 def hello_world_view(request):
     return HttpResponse("Hello, World! This is a basic Django view over HTTP.")
 
 # Home view for the posts app
-logger = LoggerSingleton().get_logger()
-
 def posts_home(request):
     logger.info("Accessing posts_home view.")
     return HttpResponse("Welcome to the Posts API")
+
+# Home view for Google API
+def homepage_view(request):
+    return HttpResponse("Welcome to the Homepage!")
 
 # Retrieve All Users (GET)
 @csrf_exempt
@@ -269,11 +279,11 @@ class PostDetailView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# User Login View
+# User Login View (Updated for Google OAuth compatibility)
 class UserLoginView(APIView):
     permission_classes = [AllowAny]
     renderer_classes = [JSONRenderer]
-    
+
     def post(self, request):
         logger = LoggerSingleton().get_logger()
         username = request.data.get('username')
@@ -285,8 +295,103 @@ class UserLoginView(APIView):
             logger.info(f"User {username} logged in successfully")
             return Response({'token': token.key}, status=status.HTTP_200_OK)
         else:
-            logger.error(f"Failed login attempt for user: {username}")
-            return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+            # Check if user exists via Google OAuth (e.g., by email)
+            email = request.data.get('email')
+            if email:
+                try:
+                    user = User.objects.get(email=email)
+                    token, created = Token.objects.get_or_create(user=user)
+                    logger.info(f"User {email} logged in via email match")
+                    return Response({'token': token.key}, status=status.HTTP_200_OK)
+                except User.DoesNotExist:
+                    pass
+        logger.error(f"Failed login attempt for user: {username or email}")
+        return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+# Google OAuth Login View (Updated and corrected for django-allauth)
+class GoogleLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            code = request.data.get('code')
+            if not code:
+                return Response({'error': 'Authorization code is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+            from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+            from allauth.socialaccount.models import SocialAccount
+            from allauth.socialaccount.providers.google.provider import GoogleProvider
+            from django.contrib.auth import login
+
+            # Get the Google provider
+            provider = GoogleProvider(request)
+            app = provider.get_app(request)  # Pass 'request' to get_app() to fix the error
+
+            # Initialize OAuth2Client with correct parameters
+            client = OAuth2Client(
+                request=request,  # Pass request as a positional argument
+                consumer_key=app.client_id,
+                consumer_secret=app.secret,
+                access_token_method='POST',
+                access_token_url='https://oauth2.googleapis.com/token',
+                callback_url='http://127.0.0.1:8000/accounts/google/login/callback/',
+                scope=['profile', 'email'],
+            )
+
+            # Exchange the authorization code for an access token
+            token = client.get_access_token(code)
+            if not token:
+                return Response({'error': 'Failed to exchange authorization code for token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Get user data from Google using the adapter
+            adapter = GoogleOAuth2Adapter(request)
+            user_data = adapter.complete_login(request, app, token)
+            if not user_data or 'email' not in user_data.account.extra_data:
+                return Response({'error': 'Invalid user data from Google.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            email = user_data.account.extra_data['email']
+            name = user_data.account.extra_data.get('name', email.split('@')[0])
+
+            # Check if user exists
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                # Create new user if it doesn't exist
+                user = User.objects.create_user(
+                    username=name,
+                    email=email,
+                    password=None  # No password needed for Google OAuth
+                )
+
+            # Link or update Google account
+            social_account, created = SocialAccount.objects.get_or_create(
+                user=user,
+                provider='google',
+                uid=user_data.account.uid
+            )
+            social_account.extra_data = user_data.account.extra_data
+            social_account.save()
+
+            # Log the user in and generate or retrieve DRF token
+            login(request, user)
+            token, created = Token.objects.get_or_create(user=user)
+
+            # Fetch profile picture (optional, if using Cloudinary or storing URLs)
+            profile_picture = user_data.account.extra_data.get('picture')
+            if profile_picture:
+                user.profile_picture = profile_picture  # Requires CloudinaryField in models.py
+                user.save()
+
+            logger.info(f"User {user.username} logged in via Google OAuth")
+            return Response({
+                'token': token.key,
+                'user': UserSerializer(user).data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            logger.error(f"Google OAuth login failed: {str(e)}")
+            return Response({'error': 'Google OAuth login failed.', 'details': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 class ProtectedView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -294,3 +399,64 @@ class ProtectedView(APIView):
 
     def get(self, request):
         return Response({"message": "Authenticated!"})
+
+# New Feed View for Homework 7
+class FeedView(APIView):
+    """
+    Retrieve a paginated feed of posts sorted by creation date (newest first).
+    Supports filtering by 'followed' users or 'liked' posts.
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    pagination_class = PageNumberPagination
+
+    def __init__(self):
+        super().__init__()
+        self.pagination_class.page_size = 10  # Default number of posts per page
+        self.pagination_class.page_size_query_param = 'size'  # Allow client to specify size
+        self.pagination_class.max_page_size = 50  # Maximum allowed size
+
+    def get(self, request, *args, **kwargs):
+        try:
+            # Get pagination parameters for validation
+            page = request.query_params.get('page', 1)
+            size = request.query_params.get('size', 10)
+            try:
+                page = int(page)
+                size = int(size)
+                if size > self.pagination_class.max_page_size:
+                    size = self.pagination_class.max_page_size
+                if page < 1:
+                    raise ValueError
+            except (ValueError, TypeError):
+                return Response({"error": "Invalid page or size parameter."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Base query: Get posts sorted by date (newest first)
+            posts = Post.objects.all().order_by('-created_at')
+
+            # Apply filtering based on query parameter
+            filter_type = request.query_params.get('filter', 'all')  # Default to 'all'
+            followed_users = [request.user.id]  # Include user's own posts
+            if hasattr(request.user, 'following'):
+                followed_users.extend(request.user.following.values_list('followed__id', flat=True))
+
+            if filter_type == 'followed':
+                # Show only posts from followed users (and self)
+                posts = posts.filter(author_id__in=followed_users)
+            elif filter_type == 'liked':
+                # Show only posts liked by the authenticated user
+                liked_post_ids = request.user.likes.values_list('post_id', flat=True)
+                posts = posts.filter(id__in=liked_post_ids)
+            else:
+                # Default: Show posts from followed users and self
+                posts = posts.filter(author_id__in=followed_users)
+
+            # Paginate the results
+            paginator = self.pagination_class()
+            paginated_posts = paginator.paginate_queryset(posts, request)
+            serializer = PostSerializer(paginated_posts, many=True)
+            return paginator.get_paginated_response(serializer.data)
+
+        except Exception as e:
+            logger.error(f"Error in FeedView: {str(e)}")
+            return Response({"error": "Failed to retrieve feed.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

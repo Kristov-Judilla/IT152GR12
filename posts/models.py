@@ -62,3 +62,20 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"Comment by {self.author.username} on Post {self.post.id}"
+
+class Follow(models.Model):
+    """
+    Model to represent a follow relationship between users.
+    Allows filtering posts from users the authenticated user follows.
+    """
+    follower = models.ForeignKey(User, on_delete=models.CASCADE, related_name='following')
+    followed = models.ForeignKey(User, on_delete=models.CASCADE, related_name='followers')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('follower', 'followed')  # Prevent duplicate follow relationships
+        verbose_name = "Follow"
+        verbose_name_plural = "Follows"
+
+    def __str__(self):
+        return f"{self.follower.username} follows {self.followed.username}"

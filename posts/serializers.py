@@ -27,9 +27,20 @@ class LikeSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'post', 'created_at']
 
 class PostSerializer(serializers.ModelSerializer):
-    comments = CommentSerializer(many=True, read_only=True)
-    likes = LikeSerializer(many=True, read_only=True, source='likes')  # Add likes to serializer
+    # Serialize the author as a nested object (using UserSerializer if available)
+    author = serializers.SerializerMethodField()
+
+    # Serialize likes as a list of like IDs or objects (depending on your needs)
+    likes = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
 
     class Meta:
         model = Post
-        fields = ['id', 'title', 'content', 'author', 'post_type', 'metadata', 'created_at', 'comments', 'likes']
+        fields = ['id', 'title', 'content', 'author', 'post_type', 'metadata', 'created_at', 'likes']
+
+    def get_author(self, obj):
+        # Return a simplified author representation or use UserSerializer if defined
+        return {
+            'id': obj.author.id,
+            'username': obj.author.username,
+            'email': obj.author.email
+        }
