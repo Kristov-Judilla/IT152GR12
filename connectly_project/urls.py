@@ -16,9 +16,16 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from posts.views import GoogleLoginView  # Correct import
+from posts.views import homepage_view, GoogleLoginView # ... other view imports ...
 
 urlpatterns = [
+    path('', homepage_view, name='homepage'),
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
     path('posts/', include('posts.urls')),  # **Keep this line - URLs will be like /posts/users/, /posts/posts/, etc.**
+    path('accounts/', include('allauth.urls')),  # Add allauth URLs    
+    path('auth/google/login/', GoogleLoginView.as_view(), name='google-login'),  # Use GoogleLoginView directly
+    
+    
 ]

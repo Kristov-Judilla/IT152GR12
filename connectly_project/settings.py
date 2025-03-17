@@ -10,12 +10,12 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
-import os  # **ADDED - For path manipulation**
-import sys  # **ADDED - For path manipulation**
+import os  # **Added - For path manipulation**
+import sys  # **Added - For path manipulation**
 
-PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))  # **ADDED - Get settings.py directory**
-SINGLETONS_DIR = os.path.join(PROJECT_DIR, 'singletons')  # **ADDED - Path to singletons folder**
-sys.path.insert(0, SINGLETONS_DIR)  # **ADDED - Add singletons folder to Python path**
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))  # **Added - Get settings.py directory**
+SINGLETONS_DIR = os.path.join(PROJECT_DIR, 'singletons')  # **Added - Path to singletons folder**
+sys.path.insert(0, SINGLETONS_DIR)  # **Added - Add singletons folder to Python path**
 
 from pathlib import Path
 
@@ -43,26 +43,57 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'posts',
+    'django.contrib.sites',  # Required for django-allauth
+    'allauth',  # Add django-allauth
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',  # Google OAuth provider
+    'posts.apps.PostsConfig',
     'rest_framework',
-    'django_extensions',  # **ADD THIS LINE!**
-    'rest_framework.authtoken'
+    'django_extensions',  # **Keep this line**
+    'rest_framework.authtoken',
 ]
+
+# Site ID for django-allauth
+SITE_ID = 1
+
+# Google OAuth settings (using your provided credentials)
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': ['profile', 'email'],
+        'AUTH_PARAMS': {'access_type': 'online'},
+        'OAUTH_PKCE_ENABLED': True,
+        'APP': {
+            'client_id': '197393292326-iineh6f6dp6rd90r5t2dhdqol410sr3r.apps.googleusercontent.com',
+            'secret': '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',
+            'key': ''
+        }
+    }
+}
+
+# Allauth settings
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+SOCIALACCOUNT_EMAIL_VERIFICATION = 'none'  # Optional: Disable email verification for testing
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework.authentication.TokenAuthentication',
-        'rest_framework.authentication.BasicAuthentication',  # enables simple command line authentication
+        'rest_framework.authentication.BasicAuthentication',  # Enables simple command-line authentication
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
         'rest_framework.permissions.IsAdminUser',
     ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',  # Keep pagination
+    'PAGE_SIZE': 10,  # Keep pagination size
 }
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',  # **Move to the top**
+    'django.middleware.security.SecurityMiddleware',  # Move to the top
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -76,7 +107,7 @@ ROOT_URLCONF = 'connectly_project.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],  # Ensure this points to an existing directory
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -135,18 +166,29 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# HTTPS Settings (Add these lines to the end of settings.py)
+# HTTPS Settings (Keep these lines, but adjust for production)
 SECURE_SSL_REDIRECT = False
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SECURE = False
 SECURE_HSTS_SECONDS = 0
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 
+# Password Hashers (Keep these, but note they may not affect Google OAuth)
 PASSWORD_HASHERS = [
     'django.contrib.auth.hashers.Argon2PasswordHasher',
     'django.contrib.auth.hashers.PBKDF2PasswordHasher',
     'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
 ]
+
+LOGIN_REDIRECT_URL = '/'  # <-- ADD THIS LINE
+
+# Optional: Cloudinary Settings for Profile Pictures (Advanced Task)
+CLOUDINARY_STORAGE = {
+    'CLOUD_NAME': 'your-cloudinary-cloud-name',
+    'API_KEY': 'your-cloudinary-api-key',
+    'API_SECRET': 'your-cloudinary-api-secret',
+}
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
