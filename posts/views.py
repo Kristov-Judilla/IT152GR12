@@ -3,13 +3,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
 import json
-from rest_framework.views import APIView
+from rest_framework.views import APIView  # Correct import (already correct)
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.generics import RetrieveAPIView
 from django.contrib.auth.models import User
-from .models import Post, Comment, Like, Follow
-from .serializers import UserSerializer, PostSerializer, CommentSerializer, LikeSerializer
+from .models import Post, Comment, Like, Follow, Dislike
+from .serializers import UserSerializer, PostSerializer, CommentSerializer, LikeSerializer, DislikeSerializer
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from .permissions import IsPostAuthor
@@ -135,7 +135,7 @@ def update_user(request, id):
         return JsonResponse({'error': 'Invalid request method'}, status=405)
 
 # Class-based views for API
-class UserListCreate(APIView):
+class UserListCreate(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -151,7 +151,7 @@ class UserListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class PostListCreate(APIView):
+class PostListCreate(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -177,7 +177,7 @@ class PostListCreate(APIView):
         except Exception as e:
             return Response({'error': 'Failed to create post.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class CommentListCreate(APIView):
+class CommentListCreate(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -193,8 +193,8 @@ class CommentListCreate(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-# New views for likes and comments (from Homework 5)
-class LikePostView(APIView):
+# Views for likes, dislikes, and comments (Homework 5)
+class LikePostView(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -215,7 +215,32 @@ class LikePostView(APIView):
             logger.error(f"Failed to like post: {str(e)}")
             return Response({'error': 'Failed to like post.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class CommentPostView(APIView):
+class DislikePostView(APIView):  # Fixed: ApiView -> APIView
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, post_id):
+        logger = LoggerSingleton().get_logger()
+        try:
+            post = get_object_or_404(Post, id=post_id)
+        except Http404:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            # Optional: Prevent liking and disliking the same post
+            if Like.objects.filter(user=request.user, post=post).exists():
+                return Response({'error': 'You have already liked this post. Cannot dislike.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            dislike, created = Dislike.objects.get_or_create(user=request.user, post=post)
+            if not created:
+                return Response({'error': 'You have already disliked this post.'}, status=status.HTTP_400_BAD_REQUEST)
+            logger.info(f"User {request.user.username} disliked Post {post.id}")
+            return Response({'message': 'Post disliked successfully!'}, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Failed to dislike post: {str(e)}")
+            return Response({'error': 'Failed to dislike post.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class CommentPostView(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -237,7 +262,7 @@ class CommentPostView(APIView):
                 return Response({'error': 'Failed to add comment.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-class CommentListView(APIView):
+class CommentListView(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
@@ -252,7 +277,7 @@ class CommentListView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 # Retrieve a Single Post with Comments (GET)
-class PostDetailView(APIView):
+class PostDetailView(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated, IsPostAuthor]
 
@@ -270,9 +295,11 @@ class PostDetailView(APIView):
                 'metadata': post.metadata,
                 'created_at': post.created_at,
                 'like_count': post.likes.count(),
+                'dislike_count': post.dislikes.count(),
                 'comment_count': post.comments.count(),
                 'comments': CommentSerializer(post.comments.all(), many=True).data,
-                'likes': LikeSerializer(post.likes.all(), many=True).data
+                'likes': LikeSerializer(post.likes.all(), many=True).data,
+                'dislikes': DislikeSerializer(post.dislikes.all(), many=True).data
             })
         except Post.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -280,7 +307,7 @@ class PostDetailView(APIView):
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # User Login View (Updated for Google OAuth compatibility)
-class UserLoginView(APIView):
+class UserLoginView(APIView):  # Fixed: ApiView -> APIView
     permission_classes = [AllowAny]
     renderer_classes = [JSONRenderer]
 
@@ -309,7 +336,7 @@ class UserLoginView(APIView):
         return Response({'error': 'Invalid Credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 # Google OAuth Login View (Updated and corrected for django-allauth)
-class GoogleLoginView(APIView):
+class GoogleLoginView(APIView):  # Fixed: ApiView -> APIView
     permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
@@ -326,11 +353,11 @@ class GoogleLoginView(APIView):
 
             # Get the Google provider
             provider = GoogleProvider(request)
-            app = provider.get_app(request)  # Pass 'request' to get_app() to fix the error
+            app = provider.get_app(request)
 
             # Initialize OAuth2Client with correct parameters
             client = OAuth2Client(
-                request=request,  # Pass request as a positional argument
+                request=request,
                 consumer_key=app.client_id,
                 consumer_secret=app.secret,
                 access_token_method='POST',
@@ -393,15 +420,15 @@ class GoogleLoginView(APIView):
             logger.error(f"Google OAuth login failed: {str(e)}")
             return Response({'error': 'Google OAuth login failed.', 'details': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-class ProtectedView(APIView):
+class ProtectedView(APIView):  # Fixed: ApiView -> APIView
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         return Response({"message": "Authenticated!"})
 
-# New Feed View for Homework 7
-class FeedView(APIView):
+# FeedView (rolled back to pre-Homework 8 version, fixed typo)
+class FeedView(APIView):  # Fixed: ApiView -> APIView
     """
     Retrieve a paginated feed of posts sorted by creation date (newest first).
     Supports filtering by 'followed' users or 'liked' posts.

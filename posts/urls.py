@@ -23,6 +23,7 @@ urlpatterns = [
 
     # New endpoints for likes and comments (added from Homework 5)
     path('<int:post_id>/like/', LikePostView.as_view(), name='post-like'),
+    path('<int:post_id>/dislike/', views.DislikePostView.as_view(), name='dislike-post'),
     path('<int:post_id>/comment/', CommentPostView.as_view(), name='post-comment'),
     path('<int:post_id>/comments/', CommentListView.as_view(), name='post-comments'),
 

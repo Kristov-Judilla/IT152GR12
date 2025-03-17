@@ -2,8 +2,19 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
+    ROLE_CHOICES = (
+        ('admin', 'Admin'),
+        ('user', 'User'),
+        ('guest', 'Guest'),
+    )
+    
     email = models.EmailField(unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(
+        max_length=10,
+        choices=ROLE_CHOICES,
+        default='user'
+    )
 
     # Define USERNAME_FIELD and REQUIRED_FIELDS
     USERNAME_FIELD = 'username'
@@ -32,6 +43,10 @@ class Post(models.Model):
         ('image', 'Image'),
         ('video', 'Video'),
     )
+    PRIVACY_CHOICES = (
+        ('public', 'Public'),
+        ('private', 'Private'),
+    )
     
     title = models.CharField(max_length=255)
     content = models.TextField()
@@ -39,6 +54,7 @@ class Post(models.Model):
     post_type = models.CharField(max_length=20, choices=POST_TYPES, default='text')
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
 
     def __str__(self):
         return f"Post by {self.author.username} at {self.created_at}"
@@ -53,6 +69,17 @@ class Like(models.Model):
 
     def __str__(self):
         return f"Like by {self.user.username} on Post {self.post.id}"
+    
+class Dislike(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dislikes')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='dislikes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'post')  # Prevent duplicate dislikes from the same user on the same post
+
+    def __str__(self):
+        return f"Dislike by {self.user.username} on Post {self.post.id}"
 
 class Comment(models.Model):
     author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments')
