@@ -26,6 +26,6 @@ urlpatterns = [
     path('posts/', include('posts.urls')),  # **Keep this line - URLs will be like /posts/users/, /posts/posts/, etc.**
     path('accounts/', include('allauth.urls')),  # Add allauth URLs    
     path('auth/google/login/', GoogleLoginView.as_view(), name='google-login'),  # Use GoogleLoginView directly
-    
+    path('api/', include('posts.urls')),
     
 ]
