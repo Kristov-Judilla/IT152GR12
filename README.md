@@ -1,9 +1,10 @@
 # 🚀 Connectly - A Social Media Feed Application
 
-![Connectly Banner](https://img.shields.io/badge/Connectly-Social%20Media%20Feed-blueviolet?style=for-the-badge&logo=appveyor)  
-![Python](https://img.shields.io/badge/Python-3.9+-yellow?style=flat-square&logo=python)  
-![Django](https://img.shields.io/badge/Django-4.2+-green?style=flat-square&logo=django)  
-![SQLite](https://img.shields.io/badge/SQLite-Database-lightgrey?style=flat-square&logo=sqlite)
+![Python](https://img.shields.io/badge/PYTHON-3.9+-323330?style=flat&logo=python&labelColor=323330&color=FFD43B)  
+![Django](https://img.shields.io/badge/DJANGO-4.2+-323330?style=flat&logo=django&labelColor=323330&color=092E20)  
+![SQLite](https://img.shields.io/badge/SQLITE-DATABASE-323330?style=flat&logo=sqlite&labelColor=323330&color=003B57)  
+![Status](https://img.shields.io/badge/STATUS-IN%20PROGRESS-323330?style=flat&labelColor=323330&color=2ECC71)  
+![Contributors](https://img.shields.io/badge/CONTRIBUTORS-4-323330?style=flat&labelColor=323330&color=F39C12)
 
 ---
 
@@ -96,18 +97,35 @@
 Below is the directory structure of the Connectly project:
 
 - **connectly_project**
-  - **src**
-    - `connectly`
-  - **data**
-    - `feedview.log`
-  - **assets**
-    - `banner.png`
-    - `screenshot.png`
+  - **connectly_project**
+    - `__pycache__`
+    - `__init__.py`
+    - `asgi.py`
+    - `settings.py`
+    - `test_api.py`
+    - `urls.py`
+    - `wsgi.py`
+  - **env**
+  - **factories**
+    - `__pycache__`
+    - `post_factory.py`
   - **logs**
     - `feedview.log`
-  - `README.md`
-  - `.gitignore`
-  - `LICENSE`
+  - **posts**
+    - `__pycache__`
+    - `migrations`
+    - `templates`
+    - `__init__.py`
+    - `admin.py`
+    - `apps.py`
+    - `models.py`
+    - `permissions.py`
+    - `serializers.py`
+    - `tests.py`
+    - `urls.py`
+    - `views.py`
+  - **singletons**
+    - `__pycache__`
 
 ---
 
