@@ -136,7 +136,7 @@ The following deliverables are part of our project submission:
 
 Here’s the team behind Connectly! Edit the names, roles, and email addresses below:
 
-- **[Your Full Name]** - Project Lead & Backend Developer - [your-email@example.com](mailto:your-email@example.com)
+- **[Kristofer Judilla]** - Project Lead & Backend Developer - [your-email@example.com](lr.kjudilla@mmdc.mcl.edu.ph)
 - **[Group Mate 1 Full Name]** - [Role/Contribution] - [groupmate1-email@example.com](mailto:groupmate1-email@example.com)
 - **[Group Mate 2 Full Name]** - [Role/Contribution] - [groupmate2-email@example.com](mailto:groupmate2-email@example.com)
 - **[Group Mate 3 Full Name]** - [Role/Contribution] - [groupmate3-email@example.com](mailto:groupmate3-email@example.com)
