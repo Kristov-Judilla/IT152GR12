@@ -7,19 +7,18 @@
 
 ---
 
-## 📖 About the Project
+## 📖 Course Overview: Integrative Programming and Technologies
 
-Connectly is a social media feed application built with Django, allowing users to create posts, retrieve personalized feeds, and interact securely with role-based access control and privacy settings. This project was developed as part of a coursework assignment, with key enhancements added in Homework 8 (Privacy Settings and RBAC) and Homework 9 (Performance Optimization).
+**Connectly** is a social media app developed to learn integrative programming concepts. It involves building a cohesive system by integrating third-party services (e.g., Google OAuth for login), managing data relationships (e.g., users, posts, likes), and ensuring scalability, security, and performance. Key challenges include optimizing database queries, implementing caching, and ensuring secure authentication, all while maintaining a modular architecture. This course project helps you master integration, scalability, and system cohesion.
 
 ---
-
 
 ## 🛠️ Installation
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/your-username/connectly.git
-   cd connectly
+   git clone https://github.com/Kristov-Judilla/IT152GR12.git
+   cd IT152GR12
    ```
 
 2. **Set Up a Virtual Environment**:
@@ -92,14 +91,50 @@ Connectly is a social media feed application built with Django, allowing users t
 
 ---
 
+## 📂 Project Structure
+
+Below is the directory structure of the Connectly project:
+
+- **connectly_project**
+  - **src**
+    - `connectly`
+  - **data**
+    - `feedview.log`
+  - **assets**
+    - `banner.png`
+    - `screenshot.png`
+  - **logs**
+    - `feedview.log`
+  - `README.md`
+  - `.gitignore`
+  - `LICENSE`
+
+---
+
+## 📦 Deliverables
+
+The following deliverables are part of our project submission:
+
+<div align="center">
+
+| Deliverable         | Link                                                                                   |
+|---------------------|----------------------------------------------------------------------------------------|
+| Diagrams            | [View Diagrams](https://drive.google.com/file/d/1ou3W_1oy3tug2yCmEkv_6WByFDyMcQ9u/view?usp=sharing) |
+| API Codebase        | [View Codebase](https://github.com/Kristov-Judilla/IT152GR12/)                        |
+| Testing Evidence    | [View Testing Evidence](https://drive.google.com/drive/folders/1N_B7AJz7VQ6k56fTKS2VJYDUVu4CmKCj?usp=sharing) |
+
+</div>
+
+---
+
 ## 👥 Group Mates
 
-Here’s the team behind Connectly! Feel free to add your group mates’ names below:
+Here’s the team behind Connectly! Edit the names, roles, and email addresses below:
 
-- **[Your Name]** - Project Lead & Backend Developer
-- **[Group Mate 1]** - [Role/Contribution]
-- **[Group Mate 2]** - [Role/Contribution]
-- **[Group Mate 3]** - [Role/Contribution]
+- **[Your Full Name]** - Project Lead & Backend Developer - [your-email@example.com](mailto:your-email@example.com)
+- **[Group Mate 1 Full Name]** - [Role/Contribution] - [groupmate1-email@example.com](mailto:groupmate1-email@example.com)
+- **[Group Mate 2 Full Name]** - [Role/Contribution] - [groupmate2-email@example.com](mailto:groupmate2-email@example.com)
+- **[Group Mate 3 Full Name]** - [Role/Contribution] - [groupmate3-email@example.com](mailto:groupmate3-email@example.com)
 
 ---
 
