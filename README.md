@@ -63,9 +63,9 @@
 - **📝 Post Creation**: Create posts with validated input and privacy settings.
 - **📜 Personalized Feed**:
   - Paginated and sorted by `created_at` (descending).
-  - Filters: `followed`, `liked`, `friends`.
-  - Privacy settings: `public`, `private`, `friends`.
-  - Role-based access control: `admin`, `moderator`, `regular user`.
+  - Filters: `comments`, `likes`, `dislikes`.
+  - Privacy settings: `public`, `private`, 
+  - Role-based access control: `admin`, `user`, `guest`.
 - **⚡ Performance Optimizations**:
   - Caching with Redis (production) or LocMemCache (development).
   - Database indexing on `created_at` and `author_id`.
@@ -136,22 +136,17 @@ The following deliverables are part of our project submission:
 
 Here’s the team behind Connectly! Edit the names, roles, and email addresses below:
 
-- **[Kristofer Judilla]** - Project Lead & Backend Developer - [your-email@example.com](lr.kjudilla@mmdc.mcl.edu.ph)
-- **[Group Mate 1 Full Name]** - [Role/Contribution] - [groupmate1-email@example.com](mailto:groupmate1-email@example.com)
-- **[Group Mate 2 Full Name]** - [Role/Contribution] - [groupmate2-email@example.com](mailto:groupmate2-email@example.com)
-- **[Group Mate 3 Full Name]** - [Role/Contribution] - [groupmate3-email@example.com](mailto:groupmate3-email@example.com)
-
----
-
-## 📄 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+- **[Kristofer Judilla]** - Project Lead & Backend Developer - [lr.kjudilla@mmdc.mcl.edu.ph](lr.kjudilla@mmdc.mcl.edu.ph)
+- **[Neil Kennedy Marquez]** - Coding / Tester	 - [lr.nkmarquez@mmdc.mcl.edu.ph](lr.nkmarquez@mmdc.mcl.edu.ph)
+- **[Alan Marco Condeno]** - Coding / Spoke Person 		 - [lr.almcondeno@mmdc.mcl.edu.ph](mailto:lr.almcondeno@mmdc.mcl.edu.ph)
+- **[Janna Patricia Nucup]** - Coding / Tester	 - [lr.japnucup@mmdc.mcl.edu.ph](mailto:lr.japnucup@mmdc.mcl.edu.ph)
+- **[Juan Paolo Dente]** - Coding / Documentation	- [lr.jpdente@mmdc.mcl.edu.ph](mailto:lr.jpdente@mmdc.mcl.edu.ph)
 
 ---
 
 ## 📬 Contact
 
-For questions or feedback, reach out to us at [your-email@example.com](mailto:your-email@example.com).
+For questions or feedback, reach out to us at [lr.kjudilla@mmdc.mcl.edu.ph](lr.kjudilla@mmdc.mcl.edu.ph).
 
 ---
 
