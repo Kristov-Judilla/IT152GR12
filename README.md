@@ -82,76 +82,41 @@
 
 Below is the directory structure of the Connectly project:
 
-Below is the directory structure of the Connectly project:
 
 /IT152GR12
-
 ├── connectly_project/
-
 │   ├── src/
-
 │   │   ├── connectly_project/
-
-│   │   │   ├── pycache/
-
-│   │   │   ├── init.py
-
+│   │   │   ├── __pycache__/
+│   │   │   ├── __init__.py
 │   │   │   ├── asgi.py
-
 │   │   │   ├── settings.py
-
 │   │   │   ├── test_api.py
-
 │   │   │   ├── urls.py
-
 │   │   │   └── wsgi.py
-
 │   │   ├── factories/
-
-│   │   │   ├── pycache/
-
+│   │   │   ├── __pycache__/
 │   │   │   └── post_factory.py
-
 │   │   ├── posts/
-
-│   │   │   ├── pycache/
-
+│   │   │   ├── __pycache__/
 │   │   │   ├── migrations/
-
 │   │   │   ├── templates/
-
-│   │   │   ├── init.py
-
+│   │   │   ├── __init__.py
 │   │   │   ├── admin.py
-
 │   │   │   ├── apps.py
-
 │   │   │   ├── models.py
-
 │   │   │   ├── permissions.py
-
 │   │   │   ├── serializers.py
-
 │   │   │   ├── tests.py
-
 │   │   │   ├── urls.py
-
 │   │   │   └── views.py
-
 │   │   └── singletons/
-
-│   │       └── pycache/
-
+│   │       └── __pycache__/
 │   ├── data/
-
 │   │   └── feedview.log
-
 │   └── env/
-
 ├── README.md
-
 ├── .gitignore
-
 └── LICENSE
 
 ---
