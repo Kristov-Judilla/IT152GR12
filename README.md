@@ -63,7 +63,7 @@
 - **📝 Post Creation**: Create posts with validated input and privacy settings.
 - **📜 Personalized Feed**:
   - Paginated and sorted by `created_at` (descending).
-  - Filters: `comments`, `likes`, `dislikes`.
+  - Filters: `comments`, `likes`, `dislikes`. `users`, `posts`,
   - Privacy settings: `public`, `private`, 
   - Role-based access control: `admin`, `user`, `guest`.
 - **⚡ Performance Optimizations**:
