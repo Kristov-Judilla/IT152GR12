@@ -1,5 +1,8 @@
 from rest_framework import serializers
 from .models import User, Post, Comment, Like, Dislike  # Added Dislike
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -34,17 +37,31 @@ class DislikeSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'post', 'created_at']
 
 class PostSerializer(serializers.ModelSerializer):
-    # Serialize the author as a nested object (using UserSerializer)
-    author = serializers.SerializerMethodField()
-    # Serialize likes and dislikes as lists of objects
-    likes = LikeSerializer(many=True, read_only=True)
-    dislikes = DislikeSerializer(many=True, read_only=True)  # Added dislikes
-    # Optionally include comments for consistency with PostDetailView
-    comments = CommentSerializer(many=True, read_only=True)
+    """
+    Serializer for the Post model, handling post data.
+    """
+    author = UserSerializer(read_only=True)
+    post_type = serializers.CharField(default='text', read_only=True)
+    metadata = serializers.ListField(default=[], read_only=True)
+    # Explicitly define the privacy field to override default choices validation
+    privacy = serializers.CharField(max_length=20)
 
     class Meta:
         model = Post
-        fields = ['id', 'title', 'content', 'author', 'post_type', 'metadata', 'created_at', 'likes', 'dislikes', 'comments']
+        fields = ['id', 'title', 'content', 'privacy', 'author', 'post_type', 'metadata', 'created_at', 'likes', 'dislikes', 'comments']
+        read_only_fields = ['author', 'post_type', 'metadata', 'created_at', 'likes', 'dislikes', 'comments']
+
+    def validate_privacy(self, value):
+        """
+        Validate that the privacy value is one of the allowed choices.
+        Normalize the value to lowercase to handle case-insensitive input.
+        """
+        value = value.lower()
+        valid_choices = [choice[0] for choice in Post.PRIVACY_CHOICES]
+        if value not in valid_choices:
+            raise serializers.ValidationError("Privacy must be 'public' or 'private'.")
+        return value
+
 
     def get_author(self, obj):
         # Return a simplified author representation
@@ -53,3 +70,4 @@ class PostSerializer(serializers.ModelSerializer):
             'username': obj.author.username,
             'email': obj.author.email
         }
+    

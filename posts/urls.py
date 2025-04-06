@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from .views import UserListCreate, PostListCreate, CommentListCreate, LikePostView, CommentPostView, CommentListView, PostDetailView, FeedView
+from .views import UserListCreate, PostListCreate, CommentListCreate, LikePostView, CommentPostView, CommentListView, PostDetailView, FeedView, UserDetail
 
 urlpatterns = [
     # Basic Hello World View at root path
@@ -29,4 +29,15 @@ urlpatterns = [
 
     # New endpoint for Homework 7: News Feed
     path('feed/', FeedView.as_view(), name='feed'),
+
+    # Admin user management endpoints
+    path('api/users/', UserListCreate.as_view(), name='user-list-create'),
+    path('api/users/<int:pk>/', UserDetail.as_view(), name='user-detail'),
+
+    # Admin user management endpoints
+    path('api/users/', UserListCreate.as_view(), name='user-list-create'),
+    path('api/users/<int:pk>/', UserDetail.as_view(), name='user-detail'),
+
+    # Feed endpoint for public and authenticated access
+    path('api/feed/', FeedView.as_view(), name='feed'),
 ]

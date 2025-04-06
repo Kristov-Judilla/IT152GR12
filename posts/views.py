@@ -2,11 +2,14 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.shortcuts import get_object_or_404
 from django.db import IntegrityError
+from django.db import models  # Added to fix the error
 from django.core.cache import cache
 import json
 from rest_framework.views import APIView
 from rest_framework.generics import GenericAPIView  # Only GenericAPIView from generics
 from rest_framework.mixins import RetrieveModelMixin, DestroyModelMixin, UpdateModelMixin  # Correct module for mixins
+from rest_framework.permissions import IsAdminUser, AllowAny  # Import for admin-only access
+from posts.permissions import AllowGuestsForPublicContent  # Custom permission
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authentication import TokenAuthentication
@@ -25,10 +28,11 @@ from allauth.socialaccount.providers.oauth2.client import OAuth2Client
 from allauth.socialaccount.models import SocialAccount
 from allauth.socialaccount.providers.google.provider import GoogleProvider
 from rest_framework.pagination import PageNumberPagination
-from posts.permissions import AllowGuestsForPublicContent
 from posts.models import Post
 from posts.serializers import PostSerializer
+from rest_framework import status, permissions
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -141,50 +145,224 @@ def update_user(request, id):
             return JsonResponse({'error': str(e)}, status=400)
     else:
         return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+class AllowAuthenticatedCreate(permissions.BasePermission):
+    """
+    Custom permission to:
+    - Allow any authenticated user to create a post (POST).
+    - Restrict listing posts (GET) to admins only.
+    """
+    def has_permission(self, request, view):
+        # Allow POST requests for any authenticated user
+        if request.method == 'POST':
+            return request.user and request.user.is_authenticated
+        # Allow GET requests only for admins
+        elif request.method == 'GET':
+            user_role = getattr(request.user, 'role', None)
+            is_admin = user_role == 'admin' if user_role else False
+            return is_admin
+        return False
 
 # Class-based views for API
 class UserListCreate(APIView):
+    """
+    API view to create new users with specified roles (e.g., admin, user).
+    - Admins can create users with any role.
+    - Regular users can self-register with the "user" role.
+    Endpoint: POST /posts/api/users/
+    """
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        users = User.objects.all()
-        serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
+    def get_permissions(self):
+        """
+        Dynamically set permissions based on the request.
+        - AllowAny for self-registration (role="user" by authenticated users).
+        - IsAdminUser for creating users with any role.
+        Returns:
+            List of permission classes.
+        """
+        if self.request.user.is_authenticated and self.request.data.get("role") == "user":
+            return [AllowAny()]  # Allow authenticated users to self-register as "user"
+        return [IsAdminUser()]  # Restrict other creations to admins
+    
+    def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to list all registered users.
+        Args:
+            request: The HTTP request object.
+        Returns:
+            Response: A list of all users in JSON format.
+        """
+        try:
+            users = User.objects.all()
+            serializer = UserSerializer(users, many=True)
+            logger.info(f"Admin {request.user.username} listed all users")
+            return Response(serializer.data, status=status.HTTP_200_OK)
 
-    def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
+        except Exception as e:
+            logger.error(f"Error listing users: {str(e)}")
+            return Response(
+                {"error": "Failed to list users.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests to create a new user.
+        Args:
+            request: The HTTP request object containing user data (username, email, password, role).
+        Returns:
+            Response: The created user data with a 201 status, or an error with 400/500 status.
+        """
+        try:
+            # Step 1: Extract data from the request
+            data = request.data
+            username = data.get("username")
+            email = data.get("email")
+            password = data.get("password")
+            role = data.get("role", "user")  # Default to "user" if not provided
+
+            # Step 2: Validate required fields
+            if not all([username, email, password]):
+                logger.warning("Missing required fields in user creation request")
+                return Response(
+                    {"error": "Username, email, and password are required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Step 3: Check permissions for role assignment
+            if not request.user.is_authenticated:
+                return Response(
+                    {"error": "Authentication required to create a user."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            if role == "admin" and not request.user.is_staff:  # Prevent non-admins from creating admins
+                return Response(
+                    {"error": "Only admins can create admin users."},
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # Step 4: Prevent users from self-upgrading to admin
+            if role == "admin" and request.user.username == username:
+                return Response(
+                    {"error": "Cannot self-register as admin."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Step 5: Create the user with the specified role
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                role=role
+            )
+
+            # Step 6: Serialize the user data for the response
+            serializer = UserSerializer(user)
+            logger.info(f"Created user {username} with role {role}")
+
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            # Log any errors and return a 500 response
+            logger.error(f"Error creating user: {str(e)}")
+            return Response(
+                {"error": "Failed to create user.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class PostListCreate(APIView):
+    """
+    API view for admins to create and list posts.
+    - POST: Create a new post (restricted to admins).
+    - GET: List all posts (restricted to admins for now; can be adjusted).
+    Endpoint: /posts/api/posts/
+    """
     authentication_classes = [TokenAuthentication]
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAuthenticatedCreate]  # Only admins can create or list posts
 
-    def get(self, request):
-        posts = Post.objects.all()
-        serializer = PostSerializer(posts, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        data = request.data
+    def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to list all posts (admin-only for now).
+        Args:
+            request: The HTTP request object.
+        Returns:
+            Response: A list of all posts in JSON format.
+        """
         try:
-            post = PostFactory.create_post(
-                post_type=data.get('post_type', 'text'),
-                title=data['title'],
-                content=data.get('content', ''),
-                metadata=data.get('metadata', {}),
-                author=request.user,
-                privacy=data.get('privacy', 'public')  # Add privacy field
-            )
-            serializer = PostSerializer(post)
-            return Response({'message': 'Post created successfully!', 'post_id': post.id}, status=status.HTTP_201_CREATED)
-        except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            posts = Post.objects.all()
+            serializer = PostSerializer(posts, many=True)
+            logger.info(f"Admin {request.user.username} listed all posts")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({'error': 'Failed to create post.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Error listing posts: {str(e)}")
+            return Response(
+                {"error": "Failed to list posts.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def post(self, request, *args, **kwargs):
+        """
+        Handle POST requests to create a new post.
+        Args:
+            request: The HTTP request object containing post data (title, content, privacy).
+        Returns:
+            Response: The created post data with a 201 status, or an error with 400/500 status.
+        """
+        try:
+            # Step 1: Extract data from the request
+            data = request.data
+            title = data.get("title")
+            content = data.get("content")
+            privacy = data.get("privacy", "public")  # Default to public if not provided
+
+            # Step 2: Validate required fields
+            if not all([title, content]):
+                logger.warning("Missing required fields in post creation request")
+                return Response(
+                    {"error": "Title and content are required."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Step 3: Validate privacy value
+            if privacy not in ['public', 'private', 'friends_only']:
+                return Response(
+                    {"error": "Privacy must be 'public', 'private', or 'friends_only'."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Step 4: Create the post with the authenticated user as author
+            if not request.user.is_authenticated:
+                return Response(
+                    {"error": "Authentication required to create a post."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            post = Post.objects.create(
+                title=title,
+                content=content,
+                privacy=privacy,
+                author=request.user
+            )
+
+            # Step 5: Serialize the post data for the response
+            serializer = PostSerializer(post)
+            logger.info(f"Admin {request.user.username} created post {title} with privacy {privacy}")
+
+            # Step 6: Invalidate feed cache to reflect the new post
+            cache.clear()  # Clears all cache entries
+            logger.info("Cleared feed cache after creating new post")
+
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            logger.error(f"Error creating post: {str(e)}")
+            return Response(
+                {"error": "Failed to create post.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 class CommentListCreate(APIView):
     authentication_classes = [TokenAuthentication]
@@ -256,6 +434,8 @@ class DislikePostView(APIView):
         except Exception as e:
             logger.error(f"Failed to dislike post: {str(e)}")
             return Response({'error': 'Failed to dislike post.', 'details': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
 class CommentPostView(APIView):
     authentication_classes = [TokenAuthentication]
@@ -356,10 +536,20 @@ class PostDetailView(GenericAPIView, RetrieveModelMixin, DestroyModelMixin, Upda
         serializer = self.get_serializer(instance, data=request.data, partial=False)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+
+        # Log the updated privacy value for debugging
+        updated_post = Post.objects.get(pk=instance.pk)
+        logger.info(f"Updated post {instance.pk} privacy to {updated_post.privacy}")
+
+        # Invalidate feed cache to reflect the update
+        cache.clear()
+        logger.info("Cleared feed cache after updating post")
+
         return Response({
             'message': 'Post updated successfully',
             'post': serializer.data
         }, status=status.HTTP_200_OK)
+    
 
     def delete(self, request, *args, **kwargs):
         logger.info(f"DELETE request for post {kwargs.get('pk')} by {request.user.username}")
@@ -481,23 +671,45 @@ class ProtectedView(APIView):
 # FeedView (rolled back to pre-Homework 8 version, fixed typo)
 class FeedView(APIView):
     """
-    Retrieve a paginated feed of posts sorted by creation date (newest first).
-    Supports filtering by 'followed' users or 'liked' posts.
-    Guests can only view public content.
+    API view to retrieve a paginated feed of posts.
+    Features:
+    - GET: Guests can view only public posts; authenticated users see all public posts and their own private posts.
+    - Implements caching to improve performance.
+    - Uses query optimization with select_related and prefetch_related.
+    Endpoint: /posts/feed/
     """
-    authentication_classes = [TokenAuthentication]
-    permission_classes = [AllowGuestsForPublicContent]
+    authentication_classes = [TokenAuthentication]  # Optional for authenticated users
+    permission_classes = [AllowGuestsForPublicContent]  # Allow guests for public content
     pagination_class = PageNumberPagination
 
+    cache_hits = 0
+    cache_misses = 0
+    request_count = 0
+    LOG_INTERVAL = 100
+
     def __init__(self):
+        """Initialize pagination settings for the feed."""
         super().__init__()
-        self.pagination_class.page_size = 10
-        self.pagination_class.page_size_query_param = 'size'
-        self.pagination_class.max_page_size = 50
+        self.pagination_class.page_size = 10  # Default page size
+        self.pagination_class.page_size_query_param = 'size'  # Allow size override via query param
+        self.pagination_class.max_page_size = 50  # Maximum page size to prevent abuse
 
     def get(self, request, *args, **kwargs):
+        """
+        Handle GET requests to retrieve the feed.
+        Args:
+            request: The HTTP request object.
+        Returns:
+            Response: A paginated list of posts in JSON format.
+        """
+        # Measure start time
+        start_time = time.time()
+
         try:
-            # Validate pagination parameters
+            # Increment request counter
+            FeedView.request_count += 1
+
+            # Step 1: Validate pagination parameters
             page = request.query_params.get('page', 1)
             size = request.query_params.get('size', 10)
             try:
@@ -508,21 +720,44 @@ class FeedView(APIView):
                 if page < 1:
                     raise ValueError
             except (ValueError, TypeError):
-                return Response({"error": "Invalid page or size parameter."}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Invalid page or size parameter."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
 
-            # Generate cache key
+            # Step 2: Generate a unique cache key based on user and request parameters
             user_id = request.user.id if request.user.is_authenticated else 'guest'
             cache_key = f"feed_{user_id}_page_{page}_size_{size}_filter_{request.query_params.get('filter', 'all')}"
             cached_data = cache.get(cache_key)
 
+            # Step 3: Track cache hits and misses
             if cached_data:
+                FeedView.cache_hits += 1
                 logger.info(f"Cache hit for {cache_key}")
+                # Log response time for cache hit
+                elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+                logger.info(f"Response time (cache hit): {elapsed_time:.2f} ms")
                 return Response(cached_data)
+            else:
+                FeedView.cache_misses += 1
+                logger.info(f"Cache miss for {cache_key}")
 
-            # Optimize query with select_related and prefetch_related
-            posts = Post.objects.select_related('author').prefetch_related('likes', 'dislikes', 'comments').order_by('-created_at')
+            # Log cache hit rate every LOG_INTERVAL requests
+            if FeedView.request_count % FeedView.LOG_INTERVAL == 0:
+                total_requests = FeedView.cache_hits + FeedView.cache_misses
+                if total_requests > 0:
+                    hit_rate = (FeedView.cache_hits / total_requests) * 100
+                    logger.info(
+                        f"Cache Hit Rate: {hit_rate:.2f}% "
+                        f"(Hits: {FeedView.cache_hits}, Misses: {FeedView.cache_misses}, Total: {total_requests})"
+                    )
 
-            # Apply privacy filtering
+            # Step 4: Query posts with optimization
+            posts = Post.objects.select_related('author').prefetch_related(
+                'likes', 'dislikes', 'comments'
+            ).order_by('-created_at')
+
+            # Step 5: Apply privacy and user-based filtering
             if not request.user.is_authenticated:
                 # Guests can only see public posts
                 posts = posts.filter(privacy='public')
@@ -531,46 +766,157 @@ class FeedView(APIView):
                 user_role = getattr(user, 'role', None)
                 is_admin = user_role == 'admin' if user_role else False
 
-                # Define followed_users for all authenticated users
-                followed_users = [user.id]
-                if hasattr(user, 'following'):
-                    followed_users.extend(user.following.values_list('followed__id', flat=True))
-
                 if is_admin:
                     # Admins see all posts
                     filtered_posts = posts
                 else:
-                    # Authenticated users see public, their own private, and friends_only from followed users
+                    # Non-admin users see:
+                    # - All public posts
+                    # - Their own private posts
                     filtered_posts = posts.filter(
                         models.Q(privacy='public') |
-                        (models.Q(privacy='private') & models.Q(author=user)) |
-                        (models.Q(privacy='friends_only') & models.Q(author__id__in=followed_users))
+                        (models.Q(privacy='private') & models.Q(author=user))
                     )
 
-                # Apply additional filtering (followed or liked)
+                # Step 6: Apply additional filtering based on query parameters
                 filter_type = request.query_params.get('filter', 'all')
-                if filter_type == 'followed':
-                    filtered_posts = filtered_posts.filter(author_id__in=followed_users)
-                elif filter_type == 'liked':
+                if filter_type == 'liked':
                     liked_post_ids = user.likes.values_list('post_id', flat=True)
                     filtered_posts = filtered_posts.filter(id__in=liked_post_ids)
-                else:
-                    filtered_posts = filtered_posts.filter(author_id__in=followed_users)
+                # Removed 'followed' filter since there's no follow functionality
+                # Removed default author_id__in=followed_users filter to show all public posts
 
                 posts = filtered_posts
 
-            # Apply pagination
+            # Step 7: Apply pagination to the filtered posts
             paginator = self.pagination_class()
             paginated_posts = paginator.paginate_queryset(posts, request)
             serializer = PostSerializer(paginated_posts, many=True)
 
-            # Cache the paginated response
+            # Step 8: Cache the response for future requests
             response_data = paginator.get_paginated_response(serializer.data).data
             cache.set(cache_key, response_data, timeout=300)  # Cache for 5 minutes
             logger.info(f"Cache set for {cache_key}")
 
+            # Log response time for cache miss
+            elapsed_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+            logger.info(f"Response time (cache miss): {elapsed_time:.2f} ms")
+
             return Response(response_data)
 
         except Exception as e:
+            # Log any errors and return a 500 response
             logger.error(f"Error in FeedView: {str(e)}")
-            return Response({"error": "Failed to retrieve feed.", "details": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response(
+                {"error": "Failed to retrieve feed.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+# API view for admins to retrieve, update, or delete a specific user.     
+class UserDetail(APIView):
+    """
+    API view for admins to retrieve, update, or delete a specific user.
+    - GET: Retrieve a user's details.
+    - PUT: Update a user's details (e.g., change role).
+    - DELETE: Delete a user.
+    Endpoint: /posts/api/users/<id>/
+    """
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAdminUser]  # Only admins can access this view
+
+    def get(self, request, pk, *args, **kwargs):
+        """
+        Handle GET requests to retrieve a specific user.
+        Args:
+            request: The HTTP request object.
+            pk: The primary key (ID) of the user to retrieve.
+        Returns:
+            Response: The user's data in JSON format, or 404 if not found.
+        """
+        try:
+            user = User.objects.get(pk=pk)
+            serializer = UserSerializer(user)
+            logger.info(f"Admin {request.user.username} retrieved user {user.username}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            logger.warning(f"User with ID {pk} not found")
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error retrieving user: {str(e)}")
+            return Response(
+                {"error": "Failed to retrieve user.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def put(self, request, pk, *args, **kwargs):
+        """
+        Handle PUT requests to update a specific user.
+        Args:
+            request: The HTTP request object containing updated user data.
+            pk: The primary key (ID) of the user to update.
+        Returns:
+            Response: The updated user data, or 404/400 if invalid.
+        """
+        try:
+            user = User.objects.get(pk=pk)
+            data = request.data
+
+            # Update fields if provided
+            if "username" in data:
+                user.username = data["username"]
+            if "email" in data:
+                user.email = data["email"]
+            if "password" in data:
+                user.set_password(data["password"])
+            if "role" in data:
+                user.role = data["role"]
+
+            user.save()
+            serializer = UserSerializer(user)
+            logger.info(f"Admin {request.user.username} updated user {user.username}")
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            logger.warning(f"User with ID {pk} not found")
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error updating user: {str(e)}")
+            return Response(
+                {"error": "Failed to update user.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def delete(self, request, pk, *args, **kwargs):
+        """
+        Handle DELETE requests to delete a specific user.
+        Args:
+            request: The HTTP request object.
+            pk: The primary key (ID) of the user to delete.
+        Returns:
+            Response: 204 on success, or 404 if not found.
+        """
+        try:
+            user = User.objects.get(pk=pk)
+            username = user.username
+            user.delete()
+            logger.info(f"Admin {request.user.username} deleted user {username}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        except User.DoesNotExist:
+            logger.warning(f"User with ID {pk} not found")
+            return Response(
+                {"error": "User not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error deleting user: {str(e)}")
+            return Response(
+                {"error": "Failed to delete user.", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

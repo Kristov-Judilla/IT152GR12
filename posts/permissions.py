@@ -1,5 +1,6 @@
 # posts/permissions.py
 from rest_framework.permissions import BasePermission
+from rest_framework.views import Request, View
 from .models import User, Post, Comment
 import logging
 
@@ -78,12 +79,27 @@ class RoleBasedPermission(BasePermission):
     from rest_framework.permissions import BasePermission
 
 class AllowGuestsForPublicContent(BasePermission):
-    def has_permission(self, request, view):
-        # Allow all users (authenticated or not) to access the endpoint
+    """
+    Custom permission class to allow guests to access public posts.
+    - Unauthenticated users can only view posts with privacy='public'.
+    - Authenticated users can view posts based on their permissions.
+    """
+    def has_permission(self, request: Request, view: View):
+        # Allow all requests to proceed to the view logic
+        # The view will handle filtering based on authentication and privacy
         return True
 
-    def has_object_permission(self, request, view, obj):
-        # For object-level permissions (e.g., PostDetailView), ensure guests can only access public content
+    def has_object_permission(self, request: Request, view: View, obj: Post):
+        """
+        Check object-level permission for a specific post.
+        Args:
+            request: The HTTP request object.
+            view: The view being accessed.
+            obj: The Post object being accessed.
+        Returns:
+            bool: True if the user has permission, False otherwise.
+        """
         if not request.user.is_authenticated:
+            # Guests can only access public posts
             return obj.privacy == 'public'
-        return True  # Authenticated users will have their access checked in the view
+        return True  # Authenticated users can access based on view logic

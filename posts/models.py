@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth import get_user_model
 
 class User(AbstractUser):
     ROLE_CHOICES = (
@@ -46,6 +47,7 @@ class Post(models.Model):
     PRIVACY_CHOICES = (
         ('public', 'Public'),
         ('private', 'Private'),
+        ('guest','Guest')
     )
     
     title = models.CharField(max_length=255)
@@ -57,7 +59,7 @@ class Post(models.Model):
     privacy = models.CharField(max_length=10, choices=PRIVACY_CHOICES, default='public')
 
     def __str__(self):
-        return f"Post by {self.author.username} at {self.created_at}"
+        return f"Post # {self.id}: {self.title} by {self.author.username} "
 
 class Like(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='likes')
