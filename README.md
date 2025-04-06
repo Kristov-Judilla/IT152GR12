@@ -59,24 +59,6 @@
 
 ---
 
-## 🚀 Usage
-
-1. **Authenticate with Google OAuth**:
-   - Send a `POST` request to `/auth/google/login` with your Google OAuth token to authenticate and receive a token.
-
-2. **Create a Post**:
-   - Use the token in the `Authorization` header.
-   - Send a `POST` request to `/posts/` with the post content:
-     ```json
-     {
-         "content": "My first post!",
-         "privacy": "public"
-     }
-     ```
-
-3. **Retrieve the Feed**:
-   - Send a `GET` request to `/feed/?page=1&size=10` to retrieve a paginated feed, filtered by privacy and user role.
-
 ---
 
 ## 🌟 Features
@@ -85,9 +67,9 @@
 - **📝 Post Creation**: Create posts with validated input and privacy settings.
 - **📜 Personalized Feed**:
   - Paginated and sorted by `created_at` (descending).
-  - Filters: `followed`, `liked`, `friends`.
-  - Privacy settings: `public`, `private`, `friends`.
-  - Role-based access control: `admin`, `moderator`, `regular user`.
+  - Filters: `comments`, `liked`, `dislikes`.
+  - Privacy settings: `public`, `private`, 
+  - Role-based access control: `admin`, `user`, `guest`.
 - **⚡ Performance Optimizations**:
   - Caching with Redis (production) or LocMemCache (development).
   - Database indexing on `created_at` and `author_id`.
@@ -100,36 +82,41 @@
 
 Below is the directory structure of the Connectly project:
 
-- **connectly_project**
-  - **connectly_project**
-    - `__pycache__`
-    - `__init__.py`
-    - `asgi.py`
-    - `settings.py`
-    - `test_api.py`
-    - `urls.py`
-    - `wsgi.py`
-  - **env**
-  - **factories**
-    - `__pycache__`
-    - `post_factory.py`
-  - **logs**
-    - `feedview.log`
-  - **posts**
-    - `__pycache__`
-    - `migrations`
-    - `templates`
-    - `__init__.py`
-    - `admin.py`
-    - `apps.py`
-    - `models.py`
-    - `permissions.py`
-    - `serializers.py`
-    - `tests.py`
-    - `urls.py`
-    - `views.py`
-  - **singletons**
-    - `__pycache__`
+/IT152GR12
+├── connectly_project/
+│   ├── src/
+│   │   ├── connectly_project/
+│   │   │   ├── __pycache__/
+│   │   │   ├── __init__.py
+│   │   │   ├── asgi.py
+│   │   │   ├── settings.py
+│   │   │   ├── test_api.py
+│   │   │   ├── urls.py
+│   │   │   └── wsgi.py
+│   │   ├── factories/
+│   │   │   ├── __pycache__/
+│   │   │   └── post_factory.py
+│   │   ├── posts/
+│   │   │   ├── __pycache__/
+│   │   │   ├── migrations/
+│   │   │   ├── templates/
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py
+│   │   │   ├── apps.py
+│   │   │   ├── models.py
+│   │   │   ├── permissions.py
+│   │   │   ├── serializers.py
+│   │   │   ├── tests.py
+│   │   │   ├── urls.py
+│   │   │   └── views.py
+│   │   └── singletons/
+│   │       └── __pycache__/
+│   ├── data/
+│   │   └── feedview.log
+│   └── env/
+├── README.md
+├── .gitignore
+└── LICENSE
 
 ---
 
@@ -153,7 +140,7 @@ The following deliverables are part of our project submission:
 
 Here’s the team behind Connectly! Edit the names, roles, and email addresses below:
 
-- **[Your Full Name]** - Project Lead & Backend Developer - [your-email@example.com](mailto:your-email@example.com)
+- **[Kristofer Judilla]** - Project Lead & Backend Developer - [your-email@example.com](lr.kjudilla@mmdc.mcl.edu.ph)
 - **[Group Mate 1 Full Name]** - [Role/Contribution] - [groupmate1-email@example.com](mailto:groupmate1-email@example.com)
 - **[Group Mate 2 Full Name]** - [Role/Contribution] - [groupmate2-email@example.com](mailto:groupmate2-email@example.com)
 - **[Group Mate 3 Full Name]** - [Role/Contribution] - [groupmate3-email@example.com](mailto:groupmate3-email@example.com)
