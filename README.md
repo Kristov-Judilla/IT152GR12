@@ -1,10 +1,14 @@
 # 🚀 Connectly - A Social Media Feed Application
 
+<p align="center">
+
 ![Python](https://img.shields.io/badge/PYTHON-3.9+-323330?style=flat&logo=python&labelColor=323330&color=FFD43B)  
 ![Django](https://img.shields.io/badge/DJANGO-4.2+-323330?style=flat&logo=django&labelColor=323330&color=092E20)  
 ![SQLite](https://img.shields.io/badge/SQLITE-DATABASE-323330?style=flat&logo=sqlite&labelColor=323330&color=003B57)  
 ![Status](https://img.shields.io/badge/STATUS-IN%20PROGRESS-323330?style=flat&labelColor=323330&color=2ECC71)  
 ![Contributors](https://img.shields.io/badge/CONTRIBUTORS-4-323330?style=flat&labelColor=323330&color=F39C12)
+
+</p>
 
 ---
 
